@@ -1,0 +1,49 @@
+- name: setup faas profiler invoker environment
+  hosts: invoker
+  tasks:
+    - name: save docker image for invoker
+      delegate_to: localhost
+      command: "docker save whisk/invoker:{{invoker_image_tag}} -o {{local_tmp}}/invoker-image.tar"
+      tags: docker_image
+
+    - name: copy invoker image to the remote invoker
+      copy:
+        src: "{{local_tmp}}/invoker-image.tar"
+        dest: "{{remote_tmp}}"
+        mode: preserve
+      tags: docker_image
+
+    - name: load invoker image on remote invoker server
+      command: "docker load -i {{remote_tmp}}/invoker-image.tar"
+      tags: docker_image
+      
+    - name: create measurement log directory
+      file:
+        path: /local/kuozhang-local/faas-profiler/logs 
+        owner: kz181 # can not use root user, permission denied
+        group: kz181
+        state: directory
+        mode: u+rwx,g+rx,o+rx
+    - name: copy rapl-read source code
+      # become: true
+      copy:
+        src: /local/kuozhang-local/app-rapl/rapl-and-plot/
+        dest: /local/kuozhang-local/app-rapl/
+        mode: preserve
+      tags: rapl-copy
+    - name: compile rapl binary
+      command: make -C /local/kuozhang-local/app-rapl/ -B
+      tags: rapl-compile
+    - name: copy monitor scripts
+      copy:
+        src: /local/kuozhang-local/nsf-backup/faas-profiler/monitoring/system_utilization.py
+        dest: /local/kuozhang-local/nsf-backup/faas-profiler/monitoring/
+      tags: monitor-script-copy
+    - name: install pip for python38
+      shell: |
+        curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+        python3.8 get-pip.py
+      tags: install-pip
+    - name: install python packages
+      command: python3.8 -m pip install psutil
+      tags: pip-install-pkg

@@ -1,0 +1,8 @@
+- name: setup faas profiler invoker environment
+  hosts: cloud-gpu00-invoker
+  tasks:
+    - name: fetch log data
+      ansible.posix.synchronize:
+        mode: pull
+        src: /local/kuozhang-local/faas-profiler/logs/
+        dest: /local/kuozhang-local/nsf-backup/faas-profiler/logs/
